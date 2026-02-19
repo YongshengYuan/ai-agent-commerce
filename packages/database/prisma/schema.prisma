@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id                 String   @id @default(uuid())
+  name               String
+  description        String?  @db.Text
+  aiDescription      String?  @map("ai_description") @db.Text
+  price              Decimal  @db.Decimal(10, 2)
+  currency           String   @default("USD") @db.VarChar(3)
+  stock              Int      @default(0)
+  category           String?  @db.VarChar(100)
+  image              String?  @db.VarChar(500)
+  supplier           String?  @db.VarChar(50)
+  supplierProductId  String?  @map("supplier_product_id") @db.VarChar(100)
+  attributes         Json?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([supplier])
+  @@fulltext([name, description])
+  @@map("products")
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  sessionId String   @map("session_id") @db.VarChar(100)
+  items     Json
+  total     Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([sessionId])
+  @@map("carts")
+}
+
+model Order {
+  id                   String        @id @default(uuid())
+  sessionId            String        @map("session_id") @db.VarChar(100)
+  items                Json
+  shippingAddress      Json          @map("shipping_address")
+  paymentMethod        String?       @map("payment_method") @db.VarChar(20)
+  total                Decimal       @db.Decimal(10, 2)
+  currency             String        @default("USD") @db.VarChar(3)
+  status               OrderStatus   @default(pending)
+  paymentStatus        PaymentStatus @default(pending) @map("payment_status")
+  stripePaymentIntentId String?      @map("stripe_payment_intent_id") @db.VarChar(100)
+  supplierOrders       Json?         @map("supplier_orders")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  @@index([sessionId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model AIConversation {
+  id        String   @id @default(uuid())
+  sessionId String   @map("session_id") @db.VarChar(100)
+  messages  Json
+  context   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([sessionId])
+  @@map("ai_conversations")
+}
+
+model InventorySyncLog {
+  id              String    @id @default(uuid())
+  supplier        String    @db.VarChar(50)
+  syncType        String?   @map("sync_type") @db.VarChar(20)
+  productsUpdated Int       @default(0) @map("products_updated")
+  productsFailed  Int       @default(0) @map("products_failed")
+  status          SyncStatus @default(running)
+  errorMessage    String?   @map("error_message") @db.Text
+  startedAt       DateTime  @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+
+  @@index([supplier])
+  @@index([status])
+  @@map("inventory_sync_logs")
+}
+
+enum OrderStatus {
+  pending
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
+}
+
+enum SyncStatus {
+  running
+  completed
+  failed
+}
